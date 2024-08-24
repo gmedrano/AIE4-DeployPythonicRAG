@@ -11,9 +11,10 @@ from aimakerspace.openai_utils.embedding import EmbeddingModel
 from aimakerspace.vectordatabase import VectorDatabase
 from aimakerspace.openai_utils.chatmodel import ChatOpenAI
 import chainlit as cl
+from langchain.document_loaders import PyPDFLoader  # Import PyPDFLoader
 
 system_template = """\
-Use the following context to answer a users question. If you cannot find the answer in the context, say you don't know the answer."""
+Use the following context to answer a user's question. If you cannot find the answer in the context, say you don't know the answer."""
 system_role_prompt = SystemRolePrompt(system_template)
 
 user_prompt_template = """\
@@ -50,7 +51,7 @@ class RetrievalAugmentedQAPipeline:
 text_splitter = CharacterTextSplitter()
 
 
-def process_text_file(file: AskFileResponse):
+def process_file(file: AskFileResponse):
     import tempfile
 
     with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".txt") as temp_file:
@@ -59,9 +60,16 @@ def process_text_file(file: AskFileResponse):
     with open(temp_file_path, "wb") as f:
         f.write(file.content)
 
-    text_loader = TextFileLoader(temp_file_path)
-    documents = text_loader.load_documents()
-    texts = text_splitter.split_texts(documents)
+    # Check the file type
+    if file.name.endswith('.pdf'):
+        pdf_loader = PyPDFLoader(temp_file_path)
+        split_documents = pdf_loader.load_and_split()
+        texts = [doc.page_content for doc in split_documents]
+    else:
+        text_loader = TextFileLoader(temp_file_path)
+        documents = text_loader.load_documents()
+        texts = text_splitter.split_texts(documents)
+
     return texts
 
 
@@ -70,10 +78,10 @@ async def on_chat_start():
     files = None
 
     # Wait for the user to upload a file
-    while files == None:
+    while files is None:
         files = await cl.AskFileMessage(
-            content="Please upload a Text File file to begin!",
-            accept=["text/plain"],
+            content="Please upload a Text or PDF file to begin!",
+            accept=["text/plain", "application/pdf"],
             max_size_mb=2,
             timeout=180,
         ).send()
@@ -85,8 +93,8 @@ async def on_chat_start():
     )
     await msg.send()
 
-    # load the file
-    texts = process_text_file(file)
+    # Load the file
+    texts = process_file(file)
 
     print(f"Processing {len(texts)} text chunks")
 
