@@ -11,7 +11,7 @@ from aimakerspace.openai_utils.embedding import EmbeddingModel
 from aimakerspace.vectordatabase import VectorDatabase
 from aimakerspace.openai_utils.chatmodel import ChatOpenAI
 import chainlit as cl
-from langchain.document_loaders import PyPDFLoader  # Import PyPDFLoader
+from langchain_community.document_loaders import PyPDFLoader  # Import PyPDFLoader
 
 system_template = """\
 Use the following context to answer a user's question. If you cannot find the answer in the context, say you don't know the answer."""
